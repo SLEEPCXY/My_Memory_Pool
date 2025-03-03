@@ -33,13 +33,14 @@ long long BenchmarkMemoryPool(size_t ntimes, size_t nworks, size_t rounds)
 {
 	std::vector<std::thread> vthread(nworks); // 线程池
 	//size_t total_costtime = 0;
-	auto start = std::chrono::steady_clock::now();						//开始时间
+	int sum_time = 0;
 	for (size_t k = 0; k < nworks; ++k) // 创建 nworks 个线程
 	{
 		vthread[k] = std::thread([&]() {
 			for (size_t j = 0; j < rounds; ++j)
 			{
 				//size_t begin1 = clock();
+				auto start = std::chrono::steady_clock::now();						//开始时间
 				for (size_t i = 0; i < ntimes; i++)
 				{
                     P1* p1 = newElement<P1>(); // 内存池对外接口
@@ -52,33 +53,36 @@ long long BenchmarkMemoryPool(size_t ntimes, size_t nworks, size_t rounds)
                     deleteElement<P4>(p4);
 				}
 				//size_t end1 = clock();
-
+				auto end = std::chrono::steady_clock::now();				//结束时间
 				//total_costtime += end1 - begin1;
+				auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+				sum_time = duration.count();
 			}
 		});
 	}
-	auto end = std::chrono::steady_clock::now();				//结束时间
+	
 	for (auto &t : vthread)
 	{
 		t.join();
 	}
-	auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-	std::cout << nworks << "个线程并发执行" << rounds << "轮次，每轮次newElement&deleteElement " << ntimes << "次，总计花费：" << duration.count() << " us" << std::endl;
+	
+	std::cout << nworks << "个线程并发执行" << rounds << "轮次，每轮次newElement&deleteElement " << ntimes << "次，总计花费：" << sum_time << " us" << std::endl;
 	//printf("%lu个线程并发执行%lu轮次，每轮次newElement&deleteElement %lu次，总计花费：%lu ms\n", nworks, rounds, ntimes, total_costtime);
-	return duration.count();
+	return sum_time;
 }
 
 long long BenchmarkNew(size_t ntimes, size_t nworks, size_t rounds)
 {
 	std::vector<std::thread> vthread(nworks);
 	//size_t total_costtime = 0;
-	auto start = std::chrono::steady_clock::now();						//开始时间
+	int sum_time = 0;
 	for (size_t k = 0; k < nworks; ++k)
 	{
 		vthread[k] = std::thread([&]() {
 			for (size_t j = 0; j < rounds; ++j)
 			{
 				//size_t begin1 = clock();
+				auto start = std::chrono::steady_clock::now();						//开始时间
 				for (size_t i = 0; i < ntimes; i++)
 				{
                     P1* p1 = new P1;
@@ -91,20 +95,22 @@ long long BenchmarkNew(size_t ntimes, size_t nworks, size_t rounds)
                     delete p4;
 				}
 				//size_t end1 = clock();
-				
+				auto end = std::chrono::steady_clock::now();				//结束时间
 				//total_costtime += end1 - begin1;
+				auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+				sum_time = duration.count();
 			}
 		});
 	}
-	auto end = std::chrono::steady_clock::now();				//结束时间
-	auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+	
+	
 	for (auto& t : vthread)
 	{
 		t.join();
 	}
-	std::cout << nworks << "个线程并发执行" << rounds << "轮次，每轮次malloc&free " << ntimes << "次，总计花费：" << duration.count() << " us哈哈哈哈" << std::endl;
+	std::cout << nworks << "个线程并发执行" << rounds << "轮次，每轮次malloc&free " << ntimes << "次，总计花费：" << sum_time << " us" << std::endl;
 	//printf("%lu个线程并发执行%lu轮次，每轮次malloc&free %lu次，总计花费：%lu ms\n", nworks, rounds, ntimes, total_costtime);
-	return duration.count();
+	return sum_time;
 }
 
 void test01(size_t ntimes, size_t nworks, size_t rounds){
