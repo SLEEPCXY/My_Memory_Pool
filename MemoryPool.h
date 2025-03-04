@@ -23,10 +23,10 @@ namespace Memory_Pool{
             int SlotSize_;              //记录当前内存块中，每个槽的大小
             Slot *firstBlock_;          //记录当前所在的内存块链表的首地址
             Slot *curSlot_;             //记录当前的槽位，用于分配槽位
-            Slot *freeList_;            //用于储存每次被用户释放的槽位，不还给操作系统
+            std::atomic<Slot*> freeList_;            //用于储存每次被用户释放的槽位，不还给操作系统 //v2类型修改为原子变量，少了一个锁
             Slot *lastSlot_;            //记录内存块的结尾界限，如果curSlot_超过这个，就需要开辟一个新的内存块了
 
-            std::mutex mutex_for_freeList_; //用在空闲槽位链表的锁，保证多线程下的原子性
+            //v2使用原子变量之后就不需要这一行了 std::mutex mutex_for_freeList_; //用在空闲槽位链表的锁，保证多线程下的原子性
             std::mutex mutex_for_Block_;        //用在内存块的锁，防止多线程下的重复开辟
         public:
             //construction

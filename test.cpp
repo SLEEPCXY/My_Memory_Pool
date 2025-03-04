@@ -33,7 +33,7 @@ long long BenchmarkMemoryPool(size_t ntimes, size_t nworks, size_t rounds)
 {
 	std::vector<std::thread> vthread(nworks); // 线程池
 	//size_t total_costtime = 0;
-	int sum_time = 0;
+	std::atomic<int> sum_time(0);					//v2
 	for (size_t k = 0; k < nworks; ++k) // 创建 nworks 个线程
 	{
 		vthread[k] = std::thread([&]() {
@@ -75,7 +75,7 @@ long long BenchmarkNew(size_t ntimes, size_t nworks, size_t rounds)
 {
 	std::vector<std::thread> vthread(nworks);
 	//size_t total_costtime = 0;
-	int sum_time = 0;
+	std::atomic<int> sum_time(0);					//v2 还是原子变量，确保多线程中的原子性
 	for (size_t k = 0; k < nworks; ++k)
 	{
 		vthread[k] = std::thread([&]() {
@@ -137,10 +137,9 @@ void test01(size_t ntimes, size_t nworks, size_t rounds){
 			  << "Memory: " << sum_memory / 20 << " us" << std::endl;
 }
 
-// int main()
-// {
-//     HashBucket::initMemoryPool(); // 使用内存池接口前一定要先调用该函数
-// 	test01(10000, 4, 10);
-	
-// 	return 0;
-// }
+int main()
+{
+    HashBucket::initMemoryPool(); // 使用内存池接口前一定要先调用该函数
+	test01(10000, 2, 10);
+	return 0;
+}

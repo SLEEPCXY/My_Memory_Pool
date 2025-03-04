@@ -7,21 +7,24 @@ namespace Memory_Pool{
         SlotSize_ = size;
         firstBlock_ = nullptr;
         curSlot_ = nullptr;
-        freeList_ = nullptr;
+        freeList_ = nullptr;                       //v2修改了类型值后重新复制
         lastSlot_ = nullptr;
     }
 
     void *MemoryPool::allocate()                                   //拿一个新的槽位返回void*
     {
-        if (freeList_ != nullptr){
-            {
-                std::lock_guard<std::mutex> lock(mutex_for_freeList_);
-                if (freeList_!= nullptr){
-                    Slot *temp = freeList_;
-                    freeList_ = freeList_->next;
-                    return temp;
-                }
-            }
+
+        if (freeList_.load(std::memory_order_acquire) != nullptr){                           //v2 判断条件获取值的方式修改一下
+                //v2 修改为原子变量，原本这里的锁就不需要了   std::lock_guard<std::mutex> lock(mutex_for_freeList_);    
+        //        if (freeList_!= nullptr){         v2，类型修改为原子变量后这里就不需要再次判断了
+                    Slot *expected = freeList_.load(std::memory_order_acquire);          //v2    修改获取值的方式
+                    do{
+                        if(expected == nullptr)
+                            break;
+                    } while (!freeList_.compare_exchange_weak(expected, expected->next, std::memory_order_seq_cst, std::memory_order_seq_cst));
+                    //freeList_.store(freeList_.load()->next); // v2变更获取值的方式以及修改值的方式但是编译后会报错所以这里不能这样写了，需要引用上面的写法，用内存序确保freeList_的原子性
+                    return expected;
+        //    }
         }
         if (curSlot_ >= lastSlot_){
             allocateNewBlock();
@@ -47,9 +50,9 @@ namespace Memory_Pool{
         size_t pading_num = padPointer(body, SlotSize_);
         curSlot_ = reinterpret_cast<Slot *>(body + pading_num);
 
-        lastSlot_ = reinterpret_cast<Slot*>( reinterpret_cast<size_t*>(newBlock) + BlockSize_ - SlotSize_ + 1);
+        lastSlot_ = reinterpret_cast<Slot*>( reinterpret_cast<size_t>(newBlock) + BlockSize_ - SlotSize_ + 1);
 
-        freeList_ = nullptr;
+        freeList_.store(nullptr);           //v2 更改 写值的方式
     }
 
     size_t MemoryPool::padPointer(char *p, size_t align)               //计算需要对齐的空间大小并返回
@@ -61,12 +64,12 @@ namespace Memory_Pool{
     {
         if(ptr == nullptr)
             return;
-        std::lock_guard<std::mutex> lock(mutex_for_freeList_);
+        //std::lock_guard<std::mutex> lock(mutex_for_freeList_);            v2因为修改了类型所以就不用这个锁了
         if (ptr == nullptr)
             return;
         Slot *temp = reinterpret_cast<Slot *>(ptr);
-        temp->next = freeList_;
-        freeList_ = temp;
+        temp->next = freeList_.load(std::memory_order_acquire);                                  //v2 更改获取值的方式
+        freeList_.store(temp,std::memory_order_release);                                          //v2更改写值的方式
     }
 
     void *HashBucket::useMemory(size_t size)                        //向内存池要一块size大小的内存
