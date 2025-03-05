@@ -13,4 +13,8 @@
 MemoryPool.cpp - 内存池源码文件
 MemoryPool.h - 内存池头文件
 test.cpp - 测试文件
+CmakeLists.txt - 使用cmake编译的文件
+
+## v2版本
+使用atomic优化了freeList_链表 在代码中搜索注释中的"v2"关键字可以查看到修改了哪些地方 其中v2_attention是我卡了一下午的地方需要注意判断是为空，都则会造成越界
 
