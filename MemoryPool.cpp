@@ -11,6 +11,7 @@ namespace Memory_Pool{
         lastSlot_ = nullptr;
     }
 
+
     void *MemoryPool::allocate()                                   //拿一个新的槽位返回void*
     {
 
@@ -25,6 +26,9 @@ namespace Memory_Pool{
                     //freeList_.store(freeList_.load()->next); // v2变更获取值的方式以及修改值的方式但是编译后会报错所以这里不能这样写了，需要引用上面的写法，用内存序确保freeList_的原子性
                     return expected;
         //    }
+        }
+        else{
+            return nullptr;                                 //v2_attention 没错没错，是这里吗这里没有判断freeList_是否为空；所以导致有可能返回nullptr；所以导致newElement函数中的ptr为空从而可能导致段错误
         }
         if (curSlot_ >= lastSlot_){
             allocateNewBlock();

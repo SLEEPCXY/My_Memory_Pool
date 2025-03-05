@@ -77,8 +77,7 @@ namespace Memory_Pool{
     //用户接口
     template <typename T,typename... Args>
     T *newElement(Args&&... args){
-
-        void *ptr = HashBucket::useMemory(sizeof(T));
+        void *ptr = HashBucket::useMemory(sizeof(T));                       //v2 这里出现了segmentation fault
         T *p = reinterpret_cast<T *>(ptr);
         if (p != nullptr){
             new(p) T(std::forward<Args>(args)...);
