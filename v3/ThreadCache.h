@@ -9,6 +9,7 @@ namespace MyMemoryPool{
     class ThreadCache{
         private:
             std::array<void *, FREE_LIST_SIZE> freeList_;
+            // 构造函数，初始化freeList_数组，将所有元素置为nullptr
             ThreadCache(){
                 for (int i = 0; i < FREE_LIST_SIZE;i++){
                     freeList_[i] = nullptr;

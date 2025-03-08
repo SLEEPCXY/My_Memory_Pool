@@ -10,6 +10,7 @@ namespace MyMemoryPool{
             std::this_thread::yield();              //主动让出CPU
         }
 
+        // 从centralFreeList_中获取索引为index的元素，并使用std::memory_order_acquire内存顺序加载
         void* span = centralFreeList_[index].load(std::memory_order_acquire);
         
         if (span){
@@ -50,14 +51,20 @@ namespace MyMemoryPool{
     }
     void CentralCache::returnRange(void *start, size_t size, size_t index)           //归还size大小的内存，起始地址为start
     {
+        //如果index大于FREE_LIST_SIZE，则直接返回
         if (index > FREE_LIST_SIZE){
             return;
         }
+        //获取锁
         while (locks_[index].test_and_set(std::memory_order_acquire)){
+            //如果获取锁失败，则让出CPU时间片
             std::this_thread::yield();
         }
+        //将start地址存储到centralFreeList_中
         *reinterpret_cast<void **>(start) = centralFreeList_[index].load(std::memory_order_acquire);
+        //将start地址存储到centralFreeList_中
         centralFreeList_[index].store(start, std::memory_order_release);
+        //释放锁
         locks_[index].clear();
     }
 }

@@ -5,9 +5,9 @@ namespace MyMemoryPool{
     {
         std::lock_guard<std::mutex> lock(PageCache_mutex);
 
+        //在freeSpans_中查找大于等于numPages的最小值
         std::map<size_t, Span *>::iterator it = freeSpans_.lower_bound(numPages);
 
-        //*********************注意这里的if块代码写的不一样******************** */
         if (it != freeSpans_.end()){
             Span *head = it->second;
             it->second = head->next;                //将头节点去除，下一个节点作为新头节点存入freeSpans_
@@ -44,22 +44,26 @@ namespace MyMemoryPool{
 
     void *PageCache::systemAlloc(size_t numPages)                 //向操作系统申请numPages页的内存块
     {
-        size_t size = numPages * PAGE_SIZE;
-        void *memory = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-        if (memory == MAP_FAILED)
-            return nullptr;
-        return memory;
+        size_t size = numPages * PAGE_SIZE;                        //计算申请的内存块大小
+        void *memory = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0); //使用mmap函数向操作系统申请内存块
+        if (memory == MAP_FAILED)                                  //如果申请失败
+            return nullptr;                                        //返回nullptr
+        return memory;                                             //返回申请到的内存块
     }
     void PageCache::deallocateSpan(void *ptr, size_t numPages)                //归还numPages的内存，首地址是ptr
     {
         std::lock_guard<std::mutex> lock(PageCache_mutex);
 
+        //检查ptr是否在spanMap_中
         if (spanMap_.find(ptr) == spanMap_.end()){
             return;
         }
+        //获取ptr对应的Span
         Span *head = spanMap_.find(ptr)->second;
 
+        //获取ptr后面的Span
         Span *nextSpan = reinterpret_cast<Span *>(reinterpret_cast<char *>(ptr) + numPages * PAGE_SIZE);
+        //检查ptr后面的Span是否在spanMap_中
         if (spanMap_.find(nextSpan->SpanHeadAddr) != spanMap_.end()){
 
             //检查是否是空闲内存
@@ -92,6 +96,7 @@ namespace MyMemoryPool{
                 delete nextSpan;
             }
         }
+        //将head插入到空闲链表中
         head->next = freeSpans_[head->numPages];
         freeSpans_[head->numPages] = head;
     }

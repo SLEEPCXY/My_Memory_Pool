@@ -35,26 +35,30 @@ namespace Memory_Pool{
         }
         Slot *temp;
         {
+            //加锁，防止多线程同时访问
             std::lock_guard<std::mutex> lock(mutex_for_Block_);
+            //将当前槽位赋值给temp
             temp = curSlot_;
+            //将curSlot_向后移动一个槽位
             curSlot_ += SlotSize_ / sizeof(Slot *);                 //相当于让curSlot_移向下一个槽位
+            //返回temp
             return temp;
         }
     }
 
     void MemoryPool::allocateNewBlock()                            //开辟一个新的内存块
     {
-        std::lock_guard<std::mutex> lock(mutex_for_Block_);
+        std::lock_guard<std::mutex> lock(mutex_for_Block_);        //加锁，防止多线程同时操作
 
-        void *newBlock = operator new(BlockSize_);
-        Slot *head = reinterpret_cast<Slot *>(newBlock);
-        head->next = firstBlock_;
-        firstBlock_ = head;
-        char *body = reinterpret_cast<char*>(newBlock) + sizeof(Slot*);
-        size_t pading_num = padPointer(body, SlotSize_);
-        curSlot_ = reinterpret_cast<Slot *>(body + pading_num);
+        void *newBlock = operator new(BlockSize_);                 //开辟一个新的内存块
+        Slot *head = reinterpret_cast<Slot *>(newBlock);           //将新内存块的地址转换为Slot指针
+        head->next = firstBlock_;                                  //将新内存块的next指针指向第一个内存块
+        firstBlock_ = head;                                        //将第一个内存块指向新内存块
+        char *body = reinterpret_cast<char*>(newBlock) + sizeof(Slot*); //将新内存块的地址加上Slot指针的大小，得到内存块的内容部分
+        size_t pading_num = padPointer(body, SlotSize_);           //计算内存块的内容部分需要填充的字节数
+        curSlot_ = reinterpret_cast<Slot *>(body + pading_num);    //将内存块的内容部分加上填充的字节数，得到当前可用的Slot指针
 
-        lastSlot_ = reinterpret_cast<Slot*>( reinterpret_cast<size_t>(newBlock) + BlockSize_ - SlotSize_ + 1);
+        lastSlot_ = reinterpret_cast<Slot*>( reinterpret_cast<size_t>(newBlock) + BlockSize_ - SlotSize_ + 1); //计算最后一个Slot指针的地址
 
         freeList_.store(nullptr);           //v2 更改 写值的方式
     }
