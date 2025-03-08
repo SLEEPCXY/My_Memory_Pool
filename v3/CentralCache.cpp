@@ -14,7 +14,7 @@ namespace MyMemoryPool{
         
         if (span){
             void *next = *reinterpret_cast<void **>(span);
-            centralFreeList_[index].store(next, std::memory_order_acq_rel);
+            centralFreeList_[index].store(next, std::memory_order_release);
         }
         else{
             size_t size = (index + 1) * ALIGNMENT;              //计算当前档位内存块的大小
@@ -26,19 +26,19 @@ namespace MyMemoryPool{
             size_t num = (SPAN_SIZE * PageCache::PAGE_SIZE) / size;     //计算获得的大块内存可以分为多少块
             if (num > 1){
                 for (int i = 1; i < num;i++){                       //除开要返回的那个，其它的都串成链表
-                    void *current = span + i * size;
-                    void *next = span + (i + 1) * size;
+                    void *current = reinterpret_cast<char*>(span) + i * size;
+                    void *next = reinterpret_cast<char*>(span) + (i + 1) * size;
                     *reinterpret_cast<void **>(current) = next;
                 }
-                *reinterpret_cast<void **>(span + (num-1) * size) = nullptr;        //最后一个的next置为空，这里注意指针是左操作数啊
-                void *next = span + size;
-                centralFreeList_[index].store(next, std::memory_order_acq_rel);
+                *reinterpret_cast<void **>(reinterpret_cast<char*>(span) + (num-1) * size) = nullptr;        //最后一个的next置为空，这里注意指针是左操作数啊
+                void *next = reinterpret_cast<char*>(span) + size;
+                centralFreeList_[index].store(next, std::memory_order_release);
             }
         }
         locks_[index].clear();
         return span;
     }
-    void *fetchFromPageCache(size_t size)                  //从页缓存获取内存，应该是存储到空闲链表里去吧
+    void *CentralCache::fetchFromPageCache(size_t size)                  //从页缓存获取内存，应该是存储到空闲链表里去吧
     {   
         if (size <= SPAN_SIZE * PageCache::PAGE_SIZE){                  //最小分配页数，防止频繁向os申请内存
             return PageCache::getInstance().allocateSpan(SPAN_SIZE);
@@ -57,7 +57,7 @@ namespace MyMemoryPool{
             std::this_thread::yield();
         }
         *reinterpret_cast<void **>(start) = centralFreeList_[index].load(std::memory_order_acquire);
-        centralFreeList_[index].store(start, std::memory_order_acq_rel);
+        centralFreeList_[index].store(start, std::memory_order_release);
         locks_[index].clear();
     }
 }
